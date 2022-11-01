@@ -20,11 +20,14 @@ import lombok.NoArgsConstructor;
 public class Product {
 	@Id
 	private String id;
+
 	@Field(name = "name")
 	@Indexed(unique = true)
 	private String name;
+
 	@Field(name = "descripcion")
 	private String descripcion;
+
 	@Field(name = "price")
 	private BigDecimal price;
 
