@@ -8,7 +8,7 @@
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.programmingtechie</groupId>
-	<artifactId>com.programmingtechie</artifactId>
+	<artifactId>product-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>product-service</name>
 	<description>Demo project for Spring Boot</description>
