@@ -1,8 +1,11 @@
 package com.programmingtechie.inventoryservice.service;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.programmingtechie.inventoryservice.dto.InventoryResponse;
 import com.programmingtechie.inventoryservice.repository.InventoryRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -16,14 +19,16 @@ public class InventoryService {
 	private final InventoryRepository inventoryRepository;
 
 	@Transactional(readOnly = true)
-	public boolean isInStock(String skuCode) {
+	public List<InventoryResponse> isInStock(List<String> skuCodeList) {
 
-		if (inventoryRepository.findBySkuCode(skuCode).isPresent()) {
-			log.info("Product with skuCode {} is in stock", skuCode);
-			return true;
-		}
-		log.info("Product with skuCode {} is not in stock", skuCode);
-		return false;
+		return inventoryRepository.findBySkuCodeIn(skuCodeList).stream().
+		map(inventory-> 
+			InventoryResponse.builder().
+			skuCode(inventory.getSkuCode()).
+			isInStock(inventory.getQuantity()>0).build()
+			
+		).toList();
+
 	}
 
 }
