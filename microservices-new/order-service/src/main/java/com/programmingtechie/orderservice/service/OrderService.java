@@ -28,7 +28,7 @@ public class OrderService {
 
 	private final WebClient.Builder webClientBuilder;
 
-	public void placeOrder(OrderRequest orderRequest) {
+	public String placeOrder(OrderRequest orderRequest) {
 
 		Order order = Order.builder().orderNumber(UUID.randomUUID().toString())
 				.orderLineItemsList(getOrderLineItems(orderRequest)).build();
@@ -45,21 +45,22 @@ public class OrderService {
 		 * block() para que se haga la comunicación asíncrona.
 		 */
 
-		
-		
-		
+		// Call Inventory Service, and place order if product is in
+		// stock
+		log.info("Checking inventory");
+
 		InventoryResponse[] inventoryResponsesArray = webClientBuilder.build().get()
 				.uri("http://inventory-service/api/inventory",
 						uriBuilder -> uriBuilder.queryParam("skuCodeList", skuCodesList).build())
 				.retrieve().bodyToMono(InventoryResponse[].class).block();
-		
+
 		boolean allProductsInstock = Arrays.stream(inventoryResponsesArray).allMatch(InventoryResponse::isInStock);
-		
 
 		if (allProductsInstock) {
 			orderRepository.save(order);
+			return "Pedido realizado correctamente.";
 		} else {
-			throw new IllegalArgumentException("Product is not in stock, please try again later");
+			throw new IllegalArgumentException("El producto no está en stock, prueba más tarde.");
 		}
 
 	}
