@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.cloud.sleuth.Span;
+import org.springframework.cloud.sleuth.Tracer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -17,6 +19,7 @@ import com.programmingtechie.orderservice.repository.OrderRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import zipkin2.internal.Trace;
 
 @Service
 @RequiredArgsConstructor
@@ -24,58 +27,68 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional
 public class OrderService {
 
-	private final OrderRepository orderRepository;
+    private final OrderRepository orderRepository;
 
-	private final WebClient.Builder webClientBuilder;
+    private final WebClient.Builder webClientBuilder;
 
-	public String placeOrder(OrderRequest orderRequest) {
+    private final Tracer tracer;
 
-		Order order = Order.builder().orderNumber(UUID.randomUUID().toString())
-				.orderLineItemsList(getOrderLineItems(orderRequest)).build();
+    public String placeOrder(OrderRequest orderRequest) {
 
-		List<String> skuCodesList = order.getOrderLineItemsList().stream().map(OrderLineItems::getSkuCode).toList();
+        Order order = Order.builder().orderNumber(UUID.randomUUID().toString())
+                .orderLineItemsList(getOrderLineItems(orderRequest)).build();
 
-		/**
-		 * Llamar a Inventory Service y ver si el producto está en stock.
-		 * 
-		 * retrieve() es para recibir la respuesta.
-		 * 
-		 * el bodyToMono(Boolean.class) es porque hay que decirle lo que va a recibir.
-		 * 
-		 * block() para que se haga la comunicación asíncrona.
-		 */
+        List<String> skuCodesList = order.getOrderLineItemsList().stream().map(OrderLineItems::getSkuCode).toList();
 
-		// Call Inventory Service, and place order if product is in
-		// stock
-		log.info("Checking inventory");
+        /**
+         * Llamar a Inventory Service y ver si el producto está en stock.
+         *
+         * retrieve() es para recibir la respuesta.
+         *
+         * el bodyToMono(Boolean.class) es porque hay que decirle lo que va a recibir.
+         *
+         * block() para que se haga la comunicación asíncrona.
+         */
 
-		InventoryResponse[] inventoryResponsesArray = webClientBuilder.build().get()
-				.uri("http://inventory-service/api/inventory",
-						uriBuilder -> uriBuilder.queryParam("skuCodeList", skuCodesList).build())
-				.retrieve().bodyToMono(InventoryResponse[].class).block();
 
-		boolean allProductsInstock = Arrays.stream(inventoryResponsesArray).allMatch(InventoryResponse::isInStock);
+        // Call Inventory Service, and place order if product is in
+        // stock
+        log.info("Checking inventory");
 
-		if (allProductsInstock) {
-			orderRepository.save(order);
-			return "Pedido realizado correctamente.";
-		} else {
-			throw new IllegalArgumentException("El producto no está en stock, prueba más tarde.");
-		}
+        Span inventoryServiceSpan = tracer.nextSpan().name("InventoryServiceLookup");
 
-	}
+        try (Tracer.SpanInScope spanInScope = tracer.withSpan(inventoryServiceSpan.start())) {
+            InventoryResponse[] inventoryResponsesArray = webClientBuilder.build().get()
+                    .uri("http://inventory-service/api/inventory",
+                            uriBuilder -> uriBuilder.queryParam("skuCodeList", skuCodesList).build())
+                    .retrieve().bodyToMono(InventoryResponse[].class).block();
 
-	private List<OrderLineItems> getOrderLineItems(OrderRequest orderRequest) {
+            boolean allProductsInstock = Arrays.stream(inventoryResponsesArray).allMatch(InventoryResponse::isInStock);
 
-		return orderRequest.getOrderLineItemsDtoList().stream().map(this::mapToOrderLineItems).toList();
+            if (allProductsInstock) {
+                orderRepository.save(order);
+                return "Pedido realizado correctamente.";
+            } else {
+                throw new IllegalArgumentException("El producto no está en stock, prueba más tarde.");
+            }
+        } finally {
+            inventoryServiceSpan.end();
+        }
 
-	}
 
-	private OrderLineItems mapToOrderLineItems(OrderLineItemsDto orderLineItemsDto) {
+    }
 
-		return OrderLineItems.builder().skuCode(orderLineItemsDto.getSkuCode()).price(orderLineItemsDto.getPrice())
-				.quantity(orderLineItemsDto.getQuantity()).build();
+    private List<OrderLineItems> getOrderLineItems(OrderRequest orderRequest) {
 
-	}
+        return orderRequest.getOrderLineItemsDtoList().stream().map(this::mapToOrderLineItems).toList();
+
+    }
+
+    private OrderLineItems mapToOrderLineItems(OrderLineItemsDto orderLineItemsDto) {
+
+        return OrderLineItems.builder().skuCode(orderLineItemsDto.getSkuCode()).price(orderLineItemsDto.getPrice())
+                .quantity(orderLineItemsDto.getQuantity()).build();
+
+    }
 
 }
