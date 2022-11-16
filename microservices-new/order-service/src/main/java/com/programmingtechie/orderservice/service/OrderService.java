@@ -4,8 +4,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+import com.programmingtechie.orderservice.event.OrderPlacedEvent;
 import org.springframework.cloud.sleuth.Span;
 import org.springframework.cloud.sleuth.Tracer;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -32,6 +34,8 @@ public class OrderService {
     private final WebClient.Builder webClientBuilder;
 
     private final Tracer tracer;
+
+    private final KafkaTemplate<String,OrderPlacedEvent> kafkaTemplate;
 
     public String placeOrder(OrderRequest orderRequest) {
 
@@ -67,6 +71,7 @@ public class OrderService {
 
             if (allProductsInstock) {
                 orderRepository.save(order);
+                kafkaTemplate.send("notificationTopic", new OrderPlacedEvent(order.getOrderNumber()));
                 return "Pedido realizado correctamente.";
             } else {
                 throw new IllegalArgumentException("El producto no está en stock, prueba más tarde.");
