@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/order")
 @RequiredArgsConstructor
-public class OrderController {
+public class kikemcpptroller {
 
 	private final OrderService orderService;
 
