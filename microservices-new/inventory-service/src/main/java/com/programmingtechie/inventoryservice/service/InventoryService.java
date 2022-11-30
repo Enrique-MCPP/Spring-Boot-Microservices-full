@@ -23,7 +23,7 @@ public class InventoryService {
 	@SneakyThrows//Para el Thread, no usarlo en producción. En producción usar try catch
 	public List<InventoryResponse> isInStock(List<String> skuCodeList) {
 		log.info("En espera por inventory-service..");
-		Thread.sleep(10000);
+		//Thread.sleep(10000);
 		log.info("Fin de intento de llamada a inventory-service.");
 		return inventoryRepository.findBySkuCodeIn(skuCodeList).stream().map(inventory -> InventoryResponse.builder()
 				.skuCode(inventory.getSkuCode()).isInStock(inventory.getQuantity() > 0).build()

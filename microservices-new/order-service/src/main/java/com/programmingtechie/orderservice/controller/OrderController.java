@@ -20,11 +20,11 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/order")
 @RequiredArgsConstructor
-public class kikemcpptroller {
+public class OrderController {
 
 	private final OrderService orderService;
 
-	@PostMapping
+	@PostMapping()
 	@ResponseStatus(HttpStatus.CREATED)
 	@CircuitBreaker(name = "inventory", fallbackMethod = "fallbackMethod")
 	@TimeLimiter(name = "inventory") // Para comprobar si va muy lenta la respuesta del microservicio
