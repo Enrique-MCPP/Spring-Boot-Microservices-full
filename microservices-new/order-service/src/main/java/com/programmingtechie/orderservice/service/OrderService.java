@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.UUID;
 
 import com.programmingtechie.orderservice.event.OrderPlacedEvent;
-import org.springframework.cloud.sleuth.Span;
-import org.springframework.cloud.sleuth.Tracer;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +21,6 @@ import com.programmingtechie.orderservice.repository.OrderRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import zipkin2.internal.Trace;
 
 @Service
 @RequiredArgsConstructor
@@ -61,7 +60,8 @@ public class OrderService {
 
         Span inventoryServiceSpan = tracer.nextSpan().name("InventoryServiceLookup");
 
-        try (Tracer.SpanInScope spanInScope = tracer.withSpan(inventoryServiceSpan.start())) {
+        try (Tracer.SpanInScope spanInScope = tracer.withSpan(inventoryServiceSpan)) {
+            inventoryServiceSpan.start();
             InventoryResponse[] inventoryResponsesArray = webClientBuilder.build().get()
                     .uri("http://inventory-service/api/inventory",
                             uriBuilder -> uriBuilder.queryParam("skuCodeList", skuCodesList).build())
