@@ -112,8 +112,14 @@ public class OrderService {
 
             if (allProductsInstock) {
                 orderRepository.save(order);
+                log.info(">>> Order saved to database: {}", order.getOrderNumber());
+                
                 if (kafkaTemplate != null) {
+                    log.info(">>> Sending Kafka event to notificationTopic for order: {}", order.getOrderNumber());
                     kafkaTemplate.send("notificationTopic", new OrderPlacedEvent(order.getOrderNumber()));
+                    log.info(">>> Kafka event sent successfully");
+                } else {
+                    log.warn(">>> KafkaTemplate is NULL - event NOT sent!");
                 }
                 return "Pedido realizado correctamente.";
             } else {
