@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(docker logs:*)"
+      "Bash(docker logs:*)",
+      "Bash(mvn test:*)",
+      "Bash(mvn clean compile:*)",
+      "Bash(mvn test-compile:*)",
+      "Bash(mvn clean test:*)"
     ]
   }
 }

@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package com.programmingtechie.inventory;
+
+option java_multiple_files = true;
+option java_package = "com.programmingtechie.grpc.inventory";
+option java_outer_classname = "InventoryProto";
+
+// Servicio gRPC para verificar inventario
+service InventoryService {
+  // Verifica si los productos están en stock
+  rpc CheckInventory(InventoryRequest) returns (InventoryResponse);
+}
+
+// Request - lista de SKU codes a verificar
+message InventoryRequest {
+  repeated string sku_codes = 1;
+}
+
+// Response - lista de productos con disponibilidad
+message InventoryResponse {
+  repeated InventoryItem items = 1;
+}
+
+// Item individual con su disponibilidad
+message InventoryItem {
+  string sku_code = 1;
+  bool in_stock = 2;
+  int32 quantity = 3;
+}
