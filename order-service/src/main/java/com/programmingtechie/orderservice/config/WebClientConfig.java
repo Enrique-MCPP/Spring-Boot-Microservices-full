@@ -5,33 +5,40 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Configuration
+@Slf4j
 public class WebClientConfig {
 	/**
-	 * El bean se creará con el nombre del método
-	 * 
-	 * @LoadBalanced es para que en este caso el order-service, pueda llamar a
-	 *               inventory-service por su nombre aunque haya varias instancias
-	 *               levantadas.
-	 * 
+	 * Propagación de JWT para aplicaciones Servlet (no reactivas)
+	 * Captura el token del SecurityContextHolder (Servlet) y lo añade al WebClient
 	 */
 	@Bean
 	@LoadBalanced
 	public WebClient.Builder webClientBuilder() {
 		return WebClient.builder()
 			.filter((request, next) -> {
+				// Capturar el token del contexto de seguridad de Servlet
 				var authentication = SecurityContextHolder.getContext().getAuthentication();
+				log.info(">>> WebClient filter - Authentication type: {}", 
+					authentication != null ? authentication.getClass().getSimpleName() : "NULL");
+				
 				if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-					var newRequest = org.springframework.web.reactive.function.client.ClientRequest
-						.from(request)
+					log.info(">>> WebClient filter - JWT token found, adding to request");
+					// Crear nueva request con el header Authorization
+					var newRequest = ClientRequest.from(request)
 						.header("Authorization", "Bearer " + jwtAuth.getToken().getTokenValue())
 						.build();
 					return next.exchange(newRequest);
 				}
+				log.warn(">>> WebClient filter - NO JWT token found!");
 				return next.exchange(request);
 			});
 	}
 
 }
+

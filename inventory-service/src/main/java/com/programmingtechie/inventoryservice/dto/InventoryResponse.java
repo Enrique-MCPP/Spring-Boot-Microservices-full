@@ -1,5 +1,6 @@
 package com.programmingtechie.inventoryservice.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,6 +16,7 @@ public class InventoryResponse {
 
 	private String skuCode;
 
+	@JsonProperty("inStock")
 	private boolean isInStock;
 
 }

@@ -15,6 +15,10 @@ public class InventoryResponse {
 
 	private String skuCode;
 
-	private boolean isInStock;
+	private Boolean inStock;
+
+	public boolean isInStock() {
+		return inStock != null && inStock;
+	}
 
 }

@@ -66,6 +66,18 @@ public class OrderService {
         // Call Inventory Service, and place order if product is in
         // stock
         log.info("Checking inventory");
+        
+        // Capturar el token AQUÍ, en el hilo del request HTTP original (antes de WebClient)
+        String bearerToken = null;
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        log.info(">>> Authentication in request thread: {}", authentication != null ? authentication.getClass().getSimpleName() : "NULL");
+        
+        if (authentication instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken jwtAuth) {
+            bearerToken = jwtAuth.getToken().getTokenValue();
+            log.info(">>> JWT token captured successfully");
+        }
+        
+        final String token = bearerToken;
 
         Span inventoryServiceSpan = tracer != null ? tracer.nextSpan().name("InventoryServiceLookup") : null;
 
@@ -73,10 +85,28 @@ public class OrderService {
             if (inventoryServiceSpan != null) {
                 inventoryServiceSpan.start();
             }
-            InventoryResponse[] inventoryResponsesArray = webClientBuilder.build().get()
+            
+            log.info(">>> About to call inventory-service with URL: http://inventory-service/api/inventory?skuCodeList={}", skuCodesList);
+            
+            var requestSpec = webClientBuilder.build().get()
                     .uri("http://inventory-service/api/inventory",
-                            uriBuilder -> uriBuilder.queryParam("skuCodeList", skuCodesList).build())
-                    .retrieve().bodyToMono(InventoryResponse[].class).block();
+                            uriBuilder -> uriBuilder.queryParam("skuCodeList", skuCodesList).build());
+            
+            // Agregar el token manualmente
+            if (token != null) {
+                requestSpec = requestSpec.header("Authorization", "Bearer " + token);
+                log.info(">>> Authorization header added to WebClient request");
+            } else {
+                log.warn(">>> No token available to add to WebClient request!");
+            }
+            
+            InventoryResponse[] inventoryResponsesArray = requestSpec
+                    .retrieve()
+                    .bodyToMono(InventoryResponse[].class)
+                    .doOnError(error -> log.error("!!! Error calling inventory-service: {}", error.getMessage(), error))
+                    .block(java.time.Duration.ofSeconds(5));
+            
+            log.info(">>> Received response from inventory-service: {} items", inventoryResponsesArray != null ? inventoryResponsesArray.length : 0);
 
             boolean allProductsInstock = Arrays.stream(inventoryResponsesArray).allMatch(InventoryResponse::isInStock);
 
